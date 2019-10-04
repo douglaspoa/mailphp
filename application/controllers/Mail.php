@@ -23,10 +23,7 @@ class Mail extends CI_Controller
 		];
 
 		$inbox = $this->model_mail->getEmailAttachments($data);
-
-		if ($inbox == false) {
-			$this->load->view('mail', 'Email ou senha incorretos');
-		}
+		$this->load->view('mail', $inbox);
 	}
 }
 

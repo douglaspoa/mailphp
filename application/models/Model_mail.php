@@ -2,14 +2,6 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Model_mail extends CI_Model {
-    private $imapStream;
-    private $plaintextMessage;
-    private $htmlMessage;
-    private $emails;
-    private $errors = array();
-    private $attachments = array();
-    private $attachments_dir = 'public';
-
 	/**
 	 * Pega anexos do email
 	 * @param $data. Array que contém os dados para logar no email
@@ -22,271 +14,202 @@ class Model_mail extends CI_Model {
         $hostName = '{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX';
         $userName = $data['email'];
         $password = $data['password'];
+        $maxEmails = 2;
 
-        $connect = $this->connect(
-            $hostName, //host
-            $userName, //username
-            $password //password
+        $inbox = $this->connect(
+            $hostName,
+            $userName,
+            $password
         );
 
-        $files = $this->getMessages();
+        $data = $this->imapGetDataFromFile($inbox, $maxEmails);
 
-        foreach ($files['data'] as $file ) {
-            foreach ($file['attachments'] as $attachments) {
-                $attachment = $this->getFiles($attachments);
-            }
+        imap_close($inbox);
+
+        $result = $this->sendDataToApi($data);
+
+        if ($result === false) {
+            return "Ocorreu um erro ao enviar os dados para API";
         }
 
-        printrx('fim');
+        return "Dados enviados com sucesso";
+    }
+
+    public function sendDataToApi($data)
+    {
+        $dataJson = json_encode($data);
+
+        $url  = 'http://localhost:3000/data';
+        $ch   = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+
+        $result = curl_exec($ch);
+
+        curl_close($ch);
+
+        return $result;
 
     }
 
-    public function connect($hostname, $username, $password) {
-        $connection = imap_open($hostname, $username, $password) or die('Cannot connect to Mail: ' . imap_last_error());
-        if (!preg_match("/Resource.id.*/", (string) $connection)) {
-            return $connection; //return error message
-        }
-        $this->imapStream = $connection;
-        return true;
+    /**
+     * Formata dados da string e retorna em formato de array
+     * @param $content. string que contem os dados que o usário vai enviar para API
+     * @return array
+     */
+    public function getValues($content)
+    {
+
+        $content = utf8_encode ( $content);
+
+        $value = explode("R$", $content);
+        $value = explode("\n", $value[1]);
+
+        $name = explode('Nome:', $content);
+        $name = explode("\n", $name[1]);
+
+        $address = explode("Endereço:", $content);
+        $address = explode("\n", $address[1]);
+
+        $expiry = explode("Vencimento:", $content);
+        $expiry = explode("\n", $expiry[1]);
+
+        $data = [
+          'valor' => $value[0],
+          'nome' => $name[0],
+          'endereço' => $address[0],
+          'vencimento' => $expiry[0]
+        ];
+
+        return $data;
     }
 
-    public function getMessages($type = 'text') {
-        $this->attachments_dir = rtrim($this->attachments_dir, '/');
-        $stream = $this->imapStream;
-        $emails = imap_search($stream, 'ALL');
+    /**
+     * Conecta com a caixa de entrada do email
+     * @param $hostName. string que contém os dados do host
+     * @param $userEmail. string que contém o email do usuário
+     * @param $password. string que contém a senha do usuário
+     * @return string
+     */
+    public function connect($hostName, $userEmail, $password) {
+        $connection = imap_open($hostName, $userEmail, $password) or die('Ocorreu um problema ao se conectar com o email: ' . imap_last_error());
 
-        rsort($emails);
-
-        $messages = array();
-
-        if ($emails) {
-            $this->emails = $emails;
-            foreach ($emails as $email_number) {
-                $this->attachments = array();
-                $uid = imap_uid($stream, $email_number);
-                $messages[] = $this->loadMessage($uid, $type);
-                break;
-            }
-        }
-        return array(
-            "status" => "success",
-            "data" => array_reverse($messages)
-        );
+        return $connection;
     }
 
-    public function getFiles($r) { //save attachments to directory
-        $pullPath = $this->attachments_dir . '/' . $r['file'];
-        $res = true;
+    /**
+     * Percorre a caixa de emails e pega os dados dos anexos
+     * @param $inbox connection conexão com o host email
+     * @param $maxEmails integer numero máximo de emails que a função vai percorrer
+     * @return array
+     */
+    public function imapGetDataFromFile($inbox, $maxEmails)
+    {
+        $emails = imap_search($inbox,'ALL');
 
-        if (file_exists($pullPath)) {
-            $res = false;
-        } elseif (!is_dir($this->attachments_dir)) {
-            $this->errors[] = 'Cant find directory for email attachments! Message ID:' . $r['uid'];
-            return false;
-        } elseif (!is_writable($this->attachments_dir)) {
-            $this->errors[] = 'Attachments directory is not writable! Message ID:' . $r['uid'];
-            return false;
-        }
+        if($emails) {
 
-        if($res && !preg_match('/\.php/i', $r['file']) && !preg_match('/\.cgi/i', $r['file']) && !preg_match('/\.exe/i', $r['file']) && !preg_match('/\.dll/i', $r['file']) && !preg_match('/\.mobileconfig/i', $r['file'])){
-            if (($filePointer = fopen($pullPath, 'w')) == false) {
-                $this->errors[] = 'Cant open file at imap class to save attachment file! Message ID:' . $r['uid'];
-                return false;
-            }
-            switch ($r['encoding']) {
-                case 3: //base64
-                    $streamFilter = stream_filter_append($filePointer, 'convert.base64-decode', STREAM_FILTER_WRITE);
-                    break;
-                case 4: //quoted-printable
-                    $streamFilter = stream_filter_append($filePointer, 'convert.quoted-printable-decode', STREAM_FILTER_WRITE);
-                    break;
-                default:
-                    $streamFilter = null;
-            }
-            imap_savebody($this->imapStream, $filePointer, $r['uid'], $r['part'], FT_UID);
-            if ($streamFilter) {
-                stream_filter_remove($streamFilter);
-            }
-            fclose($filePointer);
-            return array("status" => "success", "path" => $pullPath);
-        }else{
-            return array("status" => "success", "path" => $pullPath);
-        }
-    }
+            $count = 1;
+            $finalData = [];
 
-    private function loadMessage($uid, $type) {
-        $overview = $this->getOverview($uid);
-        $array = array();
-        $array['uid'] = $overview->uid;
-        $array['subject'] = isset($overview->subject) ? $this->decode($overview->subject) : '';
-        $array['date'] = date('Y-m-d h:i:sa', strtotime($overview->date));
-        $headers = $this->getHeaders($uid);
-        $array['from'] = isset($headers->from) ? $this->processAddressObject($headers->from) : array('');
-        $structure = $this->getStructure($uid);
-        if (!isset($structure->parts)) { // not multipart
-            $this->processStructure($uid, $structure);
-        } else { // multipart
-            foreach ($structure->parts as $id => $part) {
-                $this->processStructure($uid, $part, $id + 1);
-            }
-        }
-        $array['message'] = $type == 'text' ? $this->plaintextMessage : $this->htmlMessage;
-        $array['attachments'] = $this->attachments;
-        return $array;
-    }
+            rsort($emails);
 
-    private function processStructure($uid, $structure, $partIdentifier = null) {
-        $parameters = $this->getParametersFromStructure($structure);
-        if ((isset($parameters['name']) || isset($parameters['filename'])) || (isset($structure->subtype) && strtolower($structure->subtype) == 'rfc822')
-        ) {
-            if (isset($parameters['filename'])) {
-                $this->setFileName($parameters['filename']);
-            } elseif (isset($parameters['name'])) {
-                $this->setFileName($parameters['name']);
-            }
-            $this->encoding = $structure->encoding;
-            $result_save = $this->saveToDirectory($uid, $partIdentifier);
-            $this->attachments[] = $result_save;
-        } elseif ($structure->type == 0 || $structure->type == 1) {
-            $messageBody = isset($partIdentifier) ?
-                imap_fetchbody($this->imapStream, $uid, $partIdentifier, FT_UID | FT_PEEK) : imap_body($this->imapStream, $uid, FT_UID | FT_PEEK);
-            $messageBody = $this->decodeMessage($messageBody, $structure->encoding);
-            if (!empty($parameters['charset']) && $parameters['charset'] !== 'UTF-8') {
-                if (function_exists('mb_convert_encoding')) {
-                    if (!in_array($parameters['charset'], mb_list_encodings())) {
-                        if ($structure->encoding === 0) {
-                            $parameters['charset'] = 'US-ASCII';
-                        } else {
-                            $parameters['charset'] = 'UTF-8';
+            foreach($emails as $email_number)
+            {
+
+                $overview = imap_fetch_overview($inbox,$email_number,0);
+
+                $message = imap_fetchbody($inbox,$email_number,2);
+
+                $structure = imap_fetchstructure($inbox, $email_number);
+
+                $attachments = array();
+
+                if(isset($structure->parts) && count($structure->parts))
+                {
+                    for($i = 0; $i < count($structure->parts); $i++)
+                    {
+                        $attachments[$i] = array(
+                            'is_attachment' => false,
+                            'filename' => '',
+                            'name' => '',
+                            'attachment' => ''
+                        );
+
+                        if($structure->parts[$i]->ifdparameters)
+                        {
+                            foreach($structure->parts[$i]->dparameters as $object)
+                            {
+                                if(strtolower($object->attribute) == 'filename')
+                                {
+                                    $attachments[$i]['is_attachment'] = true;
+                                    $attachments[$i]['filename'] = $object->value;
+                                }
+                            }
+                        }
+
+                        if($structure->parts[$i]->ifparameters)
+                        {
+                            foreach($structure->parts[$i]->parameters as $object)
+                            {
+                                if(strtolower($object->attribute) == 'name')
+                                {
+                                    $attachments[$i]['is_attachment'] = true;
+                                    $attachments[$i]['name'] = $object->value;
+                                }
+                            }
+                        }
+
+                        if($attachments[$i]['is_attachment'])
+                        {
+                            $attachments[$i]['attachment'] = imap_fetchbody($inbox, $email_number, $i+1);
+
+                            if($structure->parts[$i]->encoding == 3)
+                            {
+                                $attachments[$i]['attachment'] = base64_decode($attachments[$i]['attachment']);
+                            }
+                            elseif($structure->parts[$i]->encoding == 4)
+                            {
+                                $attachments[$i]['attachment'] = quoted_printable_decode($attachments[$i]['attachment']);
+                            }
                         }
                     }
-                    $messageBody = mb_convert_encoding($messageBody, 'UTF-8', $parameters['charset']);
-                } else {
-                    $messageBody = iconv($parameters['charset'], 'UTF-8//TRANSLIT', $messageBody);
                 }
-            }
-            if (strtolower($structure->subtype) === 'plain' || ($structure->type == 1 && strtolower($structure->subtype) !== 'alternative')) {
-                $this->plaintextMessage = '';
-                $this->plaintextMessage .= trim(htmlentities($messageBody));
-                $this->plaintextMessage = nl2br($this->plaintextMessage);
-            } elseif (strtolower($structure->subtype) === 'html') {
-                $this->htmlMessage = '';
-                $this->htmlMessage .= $messageBody;
-            }
-        }
-        if (isset($structure->parts)) {
-            foreach ($structure->parts as $partIndex => $part) {
-                $partId = $partIndex + 1;
-                if (isset($partIdentifier))
-                    $partId = $partIdentifier . '.' . $partId;
-                $this->processStructure($uid, $part, $partId);
-            }
-        }
-    }
 
-    private function setFileName($text) {
-        $this->filename = $this->decode($text);
-    }
+                foreach($attachments as $attachment)
+                {
+                    if($attachment['is_attachment'] == 1)
+                    {
+                        $filename = $attachment['name'];
+                        if(empty($filename)) $filename = $attachment['filename'];
 
-    private function saveToDirectory($uid, $partIdentifier) { //save attachments to directory
-        $array = array();
-        $array['part'] = $partIdentifier;
-        $array['file'] = $this->filename;
-        $array['encoding'] = $this->encoding;
-        return $array;
-    }
-    private function decodeMessage($data, $encoding) {
-        if (!is_numeric($encoding)) {
-            $encoding = strtolower($encoding);
-        }
-        switch (true) {
-            case $encoding === 'quoted-printable':
-            case $encoding === 4:
-                return quoted_printable_decode($data);
-            case $encoding === 'base64':
-            case $encoding === 3:
-                return base64_decode($data);
-            default:
-                return $data;
-        }
-    }
+                        if(empty($filename)) $filename = time() . ".dat";
 
-    private function getParametersFromStructure($structure) {
-        $parameters = array();
-        if (isset($structure->parameters))
-            foreach ($structure->parameters as $parameter)
-                $parameters[strtolower($parameter->attribute)] = $parameter->value;
-        if (isset($structure->dparameters))
-            foreach ($structure->dparameters as $parameter)
-                $parameters[strtolower($parameter->attribute)] = $parameter->value;
-        return $parameters;
-    }
+                        $file = "./".$email_number."-" . $filename;
+                        $fp = fopen($file, "w+");
 
-    private function getOverview($uid) {
-        $results = imap_fetch_overview($this->imapStream, $uid, FT_UID);
-        $messageOverview = array_shift($results);
-        if (!isset($messageOverview->date)) {
-            $messageOverview->date = null;
-        }
-        return $messageOverview;
-    }
+                        fwrite($fp, $attachment['attachment']);
 
-    private function decode($text) {
-        if (null === $text) {
-            return null;
-        }
-        $result = '';
-        foreach (imap_mime_header_decode($text) as $word) {
-            $ch = 'default' === $word->charset ? 'ascii' : $word->charset;
-            $result .= iconv($ch, 'utf-8', $word->text);
-        }
-        return $result;
-    }
+                        $content = file_get_contents($file);
+                        $data = $this->getValues($content);
 
-    private function processAddressObject($addresses) {
-        $outputAddresses = array();
-        if (is_array($addresses))
-            foreach ($addresses as $address) {
-                if (property_exists($address, 'mailbox') && $address->mailbox != 'undisclosed-recipients') {
-                    $currentAddress = array();
-                    $currentAddress['address'] = $address->mailbox . '@' . $address->host;
-                    if (isset($address->personal)) {
-                        $currentAddress['name'] = $this->decode($address->personal);
+                        fclose($fp);
+                        unlink($file);
+
+                        $finalData[] = $data;
+
                     }
-                    $outputAddresses = $currentAddress;
+
                 }
+
+                if($count++ >= $maxEmails) break;
             }
-        return $outputAddresses;
-    }
 
-    private function getHeaders($uid) {
-        $rawHeaders = $this->getRawHeaders($uid);
-        $headerObject = imap_rfc822_parse_headers($rawHeaders);
-        if (isset($headerObject->date)) {
-            $headerObject->udate = strtotime($headerObject->date);
-        } else {
-            $headerObject->date = null;
-            $headerObject->udate = null;
         }
-        $this->headers = $headerObject;
-        return $this->headers;
+
+        return $finalData;
     }
 
-    private function getRawHeaders($uid) {
-        $rawHeaders = imap_fetchheader($this->imapStream, $uid, FT_UID);
-        return $rawHeaders;
-    }
-
-    private function getStructure($uid) {
-        $structure = imap_fetchstructure($this->imapStream, $uid, FT_UID);
-        return $structure;
-    }
-
-    public function __destruct() {
-        if (!empty($this->errors)) {
-            foreach ($this->errors as $error) {
-                //SAVE YOUR LOG OF ERRORS
-            }
-        }
-    }
 }
