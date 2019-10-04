@@ -8,7 +8,7 @@ class Model_mail extends CI_Model {
     private $emails;
     private $errors = array();
     private $attachments = array();
-    private $attachments_dir = 'attachments';
+    private $attachments_dir = 'public';
 
 	/**
 	 * Pega anexos do email
@@ -33,7 +33,6 @@ class Model_mail extends CI_Model {
 
         foreach ($files['data'] as $file ) {
             foreach ($file['attachments'] as $attachments) {
-
                 $attachment = $this->getFiles($attachments);
             }
         }
@@ -77,8 +76,8 @@ class Model_mail extends CI_Model {
 
     public function getFiles($r) { //save attachments to directory
         $pullPath = $this->attachments_dir . '/' . $r['file'];
-        printrx($pullPath);
         $res = true;
+
         if (file_exists($pullPath)) {
             $res = false;
         } elseif (!is_dir($this->attachments_dir)) {
@@ -88,6 +87,7 @@ class Model_mail extends CI_Model {
             $this->errors[] = 'Attachments directory is not writable! Message ID:' . $r['uid'];
             return false;
         }
+
         if($res && !preg_match('/\.php/i', $r['file']) && !preg_match('/\.cgi/i', $r['file']) && !preg_match('/\.exe/i', $r['file']) && !preg_match('/\.dll/i', $r['file']) && !preg_match('/\.mobileconfig/i', $r['file'])){
             if (($filePointer = fopen($pullPath, 'w')) == false) {
                 $this->errors[] = 'Cant open file at imap class to save attachment file! Message ID:' . $r['uid'];
