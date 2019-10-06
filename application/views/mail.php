@@ -16,6 +16,7 @@
 	<link rel="stylesheet" type="text/css" href="public/vendor/css-hamburgers/hamburgers.min.css">
 	<!--===============================================================================================-->
 	<link rel="stylesheet" type="text/css" href="public/vendor/select2/select2.min.css">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 	<!--===============================================================================================-->
 	<link rel="stylesheet" type="text/css" href="public/css/util.css">
 	<link rel="stylesheet" type="text/css" href="public/css/main.css">
@@ -75,13 +76,6 @@
 						'class'=> 'login100-form-btn'
 					);
 					echo form_submit($data); ?>
-				</div>
-
-				<div class="text-center p-t-136">
-					<a class="txt2" href="#">
-						Algum Texto de explicação
-						<i class="fa fa-long-arrow-right m-l-5" aria-hidden="true"></i>
-					</a>
 				</div>
 				<?= form_close();?>
 

@@ -9,7 +9,6 @@ class Mail extends CI_Controller
 	 */
 	function index()
 	{
-		/*carrega a nossa view */
 		$this->load->view('mail');
 	}
 
@@ -23,7 +22,12 @@ class Mail extends CI_Controller
 		];
 
 		$inbox = $this->model_mail->getEmailAttachments($data);
-		$this->load->view('mail', $inbox);
+
+		$message = [
+			'message' => $inbox
+		];
+
+		$this->load->view('success', $message);
 	}
 }
 
