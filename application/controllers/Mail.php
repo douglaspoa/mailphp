@@ -23,11 +23,20 @@ class Mail extends CI_Controller
 
 		$inbox = $this->model_mail->getEmailAttachments($data);
 
-		$message = [
-			'message' => $inbox
-		];
+		if ($inbox == 0) {
+			die('Ocorreu um erro ao se conectar com o email');
+		}
 
-		$this->load->view('success', $message);
+		if ($inbox == 1) {
+			die('Não existem anexos no email!');
+		}
+
+		if($inbox == 2) {
+			die('Não foi possivel conectar com a API!');
+		}
+
+		return;
+
 	}
 }
 

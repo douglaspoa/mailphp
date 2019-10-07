@@ -22,21 +22,30 @@ class Model_mail extends CI_Model {
             $password
         );
 
+        if ($inbox == false) {
+            return 0;
+        }
+
         $data = $this->imapGetDataFromFile($inbox, $maxEmails);
 
         imap_close($inbox);
 
         $result = $this->sendDataToApi($data);
 
-        if ($result === false) {
-            return "Ocorreu um erro ao enviar os dados para API";
+        if ($result == 1) {
+            return 1;
         }
 
-        return "Dados enviados com sucesso";
+        return $result;
     }
 
     public function sendDataToApi($data)
     {
+
+        if ($data == false) {
+            return 1;
+        }
+
         $dataJson = json_encode($data);
 
         $url  = 'http://localhost:3000/data';
@@ -94,8 +103,11 @@ class Model_mail extends CI_Model {
      * @return string
      */
     public function connect($hostName, $userEmail, $password) {
-        $connection = imap_open($hostName, $userEmail, $password) or die('Ocorreu um problema ao se conectar com o email: ' . imap_last_error());
+        $connection = @imap_open($hostName, $userEmail, $password);
 
+        if (!$connection) {
+            return false;
+        }
         return $connection;
     }
 
@@ -207,6 +219,10 @@ class Model_mail extends CI_Model {
                 if($count++ >= $maxEmails) break;
             }
 
+        }
+
+        if(count($finalData) == 0) {
+            return false;
         }
 
         return $finalData;
