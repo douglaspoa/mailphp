@@ -1,31 +1,25 @@
 # Instalação
 
-Apenas clonar o repositório e rodar em qualquer servidor apache e rodar o comando abaixo.
-```bash
-composer install
-```
+Apenas clonar o repositório e rodar em qualquer servidor apache e rodar o comando abaixo. `bash composer install `
 
 ## Utilização
 
 Estou utilizando o servidor do gmail para poder acessar o email, essa configuração pode ser alterada em application/models/Model_mail.php
 ```php
-$hostName = "Algum servidor"
+ $hostName = "Algum servidor"
 ```
+
 Também a um limite definido de emails o qual a aplicação vai percorrer para procurar os anexos na mesma model.
 ```php
-$maxEmails = "2"
+ $maxEmails = "2"
 ```
-O anexo utilizado como exemplo para enviar os dados para API está na raiz do projeto "teste.txt".
+
+ O anexo utilizado como exemplo para enviar os dados para API está na raiz do projeto "teste.txt".
 
 As informações estão sendo enviadas para uma api em node que pode ser encontrada no link [api node](https://github.com/douglaspoa/node-api)
-```php
-$url  = 'http://localhost:3000/data';
-```
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+`php $url = 'http://localhost:3000/data'; `
 
-Please make sure to update tests as appropriate.
 
-## License
+## Licença
 [MIT](https://choosealicense.com/licenses/mit/)
