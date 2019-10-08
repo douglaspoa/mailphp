@@ -11,7 +11,7 @@ class Mail_model_test extends TestCase
         $expectedData = [
             'valor' => '1.300,50',
             'nome' => 'Douglas',
-            'endereço' => 'Assis Brasil, 1309',
+            'endereco' => 'Assis Brasil, 1309',
             'vencimento' => '12/19'
 
         ];

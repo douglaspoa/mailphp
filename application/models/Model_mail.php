@@ -23,7 +23,7 @@ class Model_mail extends CI_Model {
         );
 
         if ($inbox == false) {
-            return 0;
+            return 4;
         }
 
         $data = $this->imapGetDataFromFile($inbox, $maxEmails);
@@ -32,8 +32,8 @@ class Model_mail extends CI_Model {
 
         $result = $this->sendDataToApi($data);
 
-        if ($result == 1) {
-            return 1;
+        if ($data == false) {
+            return 3;
         }
 
         return $result;
@@ -64,7 +64,9 @@ class Model_mail extends CI_Model {
 
         curl_close($ch);
 
-        return $result;
+        if ($result ==  false) {
+            return 2;
+        }
 
     }
 
@@ -75,7 +77,7 @@ class Model_mail extends CI_Model {
      */
     public function getValues($content)
     {
-        $content = $this->convertEncoding($content, 'ISO-8859-1');
+        $content = $this->convertEncoding($content, 'UTF-8');
 
         $value = explode("R$", $content);
         $value = explode("\n", $value[1]);
@@ -83,7 +85,7 @@ class Model_mail extends CI_Model {
         $name = explode('Nome:', $content);
         $name = explode("\n", $name[1]);
 
-        $address = explode("Endereo:", $content);
+        $address = explode("Endereço:", $content);
         $address = explode("\n", $address[1]);
 
         $expiry = explode("Vencimento:", $content);
@@ -92,7 +94,7 @@ class Model_mail extends CI_Model {
         $data = [
           'valor' => $value[0],
           'nome' => $name[0],
-          'endereço' => $address[0],
+          'endereco' => $address[0],
           'vencimento' => $expiry[0]
         ];
 
@@ -259,6 +261,9 @@ class Model_mail extends CI_Model {
         if(count($finalData) == 0) {
             return false;
         }
+
+        //Descomentar a linha a baixo para ver os dados que estão sendo enviados para API
+        //printrx($finalData);
 
         return $finalData;
     }
