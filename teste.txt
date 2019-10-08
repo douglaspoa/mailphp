@@ -1,0 +1,7 @@
+Bom dia,
+Segue meus dados de contato e informa��es para pagamento
+Nome: Douglas
+Endere�o: Assis Brasil, 1309
+Valor: R$1.300,50
+Vencimento:12/19
+Att.

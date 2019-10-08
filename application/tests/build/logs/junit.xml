@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CodeIgniter Application Test Suite" tests="5" assertions="5" errors="0" failures="0" skipped="0" time="0.038729">
+    <testsuite name="Mail_test" file="/Applications/AMPPS/www/mailphp/application/tests/controllers/Mail_test.php" tests="3" assertions="3" errors="0" failures="0" skipped="0" time="0.021828">
+      <testcase name="test_index" class="Mail_test" classname="Mail_test" file="/Applications/AMPPS/www/mailphp/application/tests/controllers/Mail_test.php" line="13" assertions="1" time="0.015617"/>
+      <testcase name="test_method_404" class="Mail_test" classname="Mail_test" file="/Applications/AMPPS/www/mailphp/application/tests/controllers/Mail_test.php" line="19" assertions="1" time="0.003016"/>
+      <testcase name="test_APPPATH" class="Mail_test" classname="Mail_test" file="/Applications/AMPPS/www/mailphp/application/tests/controllers/Mail_test.php" line="25" assertions="1" time="0.003195"/>
+    </testsuite>
+    <testsuite name="Mail_model_test" file="/Applications/AMPPS/www/mailphp/application/tests/models/Model_mail_test.php" tests="2" assertions="2" errors="0" failures="0" skipped="0" time="0.016901">
+      <testcase name="test_detectEncoding" class="Mail_model_test" classname="Mail_model_test" file="/Applications/AMPPS/www/mailphp/application/tests/models/Model_mail_test.php" line="29" assertions="1" time="0.002371"/>
+      <testcase name="test_sendDataToApi" class="Mail_model_test" classname="Mail_model_test" file="/Applications/AMPPS/www/mailphp/application/tests/models/Model_mail_test.php" line="43" assertions="1" time="0.014530">
+        <system-out>true</system-out>
+      </testcase>
+    </testsuite>
+  </testsuite>
+</testsuites>
