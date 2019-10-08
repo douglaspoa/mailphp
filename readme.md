@@ -1,6 +1,6 @@
 # Instalação
 
-Apenas clonar o repositório e rodar em qualquer servidor apache e rodar o comando abaixo. `bash composer install `
+Apenas clonar o repositório e rodar em qualquer servidor apache e rodar o comando abaixo. `composer install `
 
 ## Utilização
 
